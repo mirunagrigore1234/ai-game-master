@@ -1,0 +1,41 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Spring / local config
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Temporary uploaded evidence
+uploads/
+evidence/
+tmp/
+
+# Java
+*.class
+
+# Build artifacts
+*.jar
+*.war
