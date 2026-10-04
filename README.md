@@ -26,7 +26,7 @@ and uses it to make game decisions.
 It can:
 - generate challenges based on the environment and game mode
 - balance challenge difficulty and point values
-- recommend game duration
+- recommend game duration while allowing the host to accept or override the recommendation
 - evaluate submitted evidence
 - adapt future challenges based on player progress
 - avoid repeating challenges already used
@@ -41,6 +41,8 @@ It can:
 - AI-assisted evidence review with human final authority
 - Live polling keeps lobby, challenge, evidence, and leaderboard state synchronized
 - Local challenge fallback keeps the game playable when Gemini is unavailable
+- - Live score feedback keeps players aware of their progress throughout the game
+- Players can preserve memorable moments by saving photos directly from the in-game camera
 
 ## Architecture
 
@@ -92,20 +94,25 @@ Gemini is **not** the final authority for evidence. Gemini Vision provides an ap
 
 ## Game flow
 
+## Game flow
+
 1. The host creates a game.
 2. Players join with the six-character game code.
 3. The host prepares challenges.
 4. Each player sees only their own assigned challenges.
-5. The host starts the game.
-6. Players attempt, skip, or submit evidence for challenges.
-7. Evidence is captured with the in-app camera and uploaded to the backend.
-8. Gemini Vision analyzes the image when available.
-9. Other players vote to approve or reject the evidence.
-10. Human majority determines the final result.
-11. Approved evidence completes the challenge and awards its points.
-12. Rejected, skipped, or incomplete challenges award 0 points.
-13. The game ends when the timer expires or every challenge is resolved.
-14. The final leaderboard is shown in the game view.
+5. The host confirms the game duration, either by accepting the AI recommendation or choosing a manual duration.
+6. The host starts the game.
+7. Players attempt, skip, or submit evidence for challenges.
+8. Players can save captured photos to their device while playing.
+9. Evidence is captured with the in-app camera and uploaded to the backend.
+10. Gemini Vision analyzes the image when available.
+11. Other players vote to approve or reject the evidence.
+12. Human majority determines the final result.
+13. Approved evidence completes the challenge and awards its points.
+14. Rejected, skipped, or incomplete challenges award 0 points.
+15. Players see their live score throughout the game, starting at 0 and increasing as challenges are approved.
+16. The game ends when the timer expires or every challenge is resolved.
+17. The final leaderboard is shown in the game view.
 
 ## Challenge design and safety
 
@@ -134,25 +141,30 @@ The backend safety filter rejects unsafe challenge text. Challenges are designed
 ## Scoring
 
 - Each player has a maximum of 100 available points.
+- Players start with a score of 0.
 - Points are distributed according to challenge difficulty.
 - Approved evidence awards the challenge’s points.
 - Rejected, skipped, and incomplete challenges award 0 points.
 - Scores never decrease.
 - Points are awarded at most once per evidence decision.
+- The current player score is displayed live during gameplay.
 
 ## Evidence and AI Vision
 
 Each challenge supports one evidence submission:
 
 1. The player captures one photo with the Expo camera.
-2. The mobile app uploads the image as multipart form data.
-3. The backend stores a temporary image file and creates an evidence record.
-4. The backend sends the image and exact challenge text to Gemini Vision.
-5. Gemini returns structured recommendation data:
+2. The player can optionally save the captured photo to their device.
+3. The mobile app uploads the image as multipart form data.
+4. The backend stores a temporary image file and creates an evidence record.
+5. The backend sends the image and exact challenge text to Gemini Vision.
+6. Gemini returns structured recommendation data:
    - approval recommendation
    - confidence
    - short analysis
-6. Human players vote on the evidence.
+7. Human players vote on the evidence.
+
+Saving a photo is independent from evidence submission. A player can keep a photo as a memory of the real-world game without affecting AI analysis, voting, scoring, or challenge completion.
 
 Gemini does **not** directly award points, complete a challenge, or reject a challenge. Human voting is authoritative. AI analysis failure leaves evidence retryable and does not prevent human resolution.
 
@@ -179,9 +191,11 @@ The timer is controlled by the server and supports:
 - 30 minutes
 - 45 minutes
 - 60 minutes
-- AI Recommended duration, with a local fallback when AI is unavailable
+- AI Recommended duration
 
-The game finishes when the timer expires or when all challenges are `completed`, `rejected`, or `skipped`.
+When AI Recommended duration is selected, the host can accept the AI recommendation or choose a different duration manually. The AI recommendation does not automatically override the host's decision.
+
+If AI duration recommendation is unavailable, the backend uses the existing local fallback.
 
 ### Regeneration
 
@@ -444,14 +458,8 @@ Game state is stored in memory, so restarting the backend clears active games an
 
 ## Future Improvements
 
-The current version focuses on the core AI Game Master experience. In the future, the project could be extended with additional features such as:
+The current version focuses on the core AI Game Master experience. Future iterations could extend the project with:
 
 - **Game History** — allow players to revisit previous games, including leaderboards, challenges, results, and submitted evidence.
-
 - **Photo Gallery** — provide a dedicated gallery where players can browse photos collected during their games.
-
-- **Photo Downloads** — allow players to download and save photos from completed games.
-
-- **Animations** — introduce richer animations and transitions to make the gameplay feel more dynamic and engaging.
-
-- **UI Improvements** — further refine the interface, visual design, and overall player experience.
+- **Photo Downloads from History** — allow players to download or save evidence photos from completed games.
