@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { API_BASE_URL } from '@/config/api';
 
 type Challenge = {
@@ -140,6 +141,10 @@ export default function GameScreen() {
     () => challenges.find((challenge) => challenge.id === selectedId) ?? null,
     [challenges, selectedId]
   );
+  const currentPlayerScore = leaderboard.find((entry) => entry.playerId === playerId)?.score;
+  const liveScore = typeof currentPlayerScore === 'number' && Number.isFinite(currentPlayerScore)
+    ? currentPlayerScore
+    : 0;
 
   const actOnChallenge = async (action: 'complete' | 'skip') => {
     if (!code || !playerId || !selectedChallenge) {
@@ -315,6 +320,28 @@ export default function GameScreen() {
     setCapturedPhotoUri(null);
   };
 
+  const savePhoto = async () => {
+    if (!capturedPhotoUri) {
+      return;
+    }
+
+    try {
+      const permission = await MediaLibrary.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission needed',
+          'Allow photo access to save this picture to your gallery.'
+        );
+        return;
+      }
+
+      await MediaLibrary.Asset.create(capturedPhotoUri);
+      Alert.alert('Photo saved', 'The photo was saved to your gallery.');
+    } catch {
+      Alert.alert('Could not save photo', 'Please try again.');
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -329,11 +356,18 @@ export default function GameScreen() {
           </Text>
         ) : null}
       </View>
+      <View style={styles.liveScoreCard}>
+        <Text style={styles.liveScoreLabel}>YOUR SCORE</Text>
+        <View style={styles.liveScoreRow}>
+          <Text style={styles.liveScoreValue}>{liveScore}</Text>
+          <Text style={styles.liveScoreTotal}>/ 100 PTS</Text>
+        </View>
+      </View>
       {game.status === 'finished' ? (
         <Text style={styles.finished}>GAME FINISHED</Text>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>Your challenges</Text>
+          <Text style={styles.sectionTitle}>YOUR CHALLENGES</Text>
           {challenges.map((challenge) => (
         <Pressable
           key={challenge.id}
@@ -368,7 +402,7 @@ export default function GameScreen() {
       )}
       {evidence.length > 0 ? (
         <>
-          <Text style={styles.sectionTitle}>Submitted evidence</Text>
+          <Text style={styles.sectionTitle}>EVIDENCE & VOTES</Text>
           {evidence.map((item) => (
             <View key={item.evidenceId} style={styles.evidenceBox}>
               <Text style={styles.evidenceTitle}>
@@ -376,7 +410,10 @@ export default function GameScreen() {
               </Text>
               <Image source={{ uri: `${API_BASE_URL}${item.imageUrl}` }} style={styles.evidenceImage} />
               {item.status === 'analyzing' ? (
-                <Text>AI analysis in progress...</Text>
+                <View style={styles.analysisState}>
+                  <ActivityIndicator color="#A89FFF" />
+                  <Text style={styles.analysisText}>AI is reviewing the evidence...</Text>
+                </View>
               ) : item.status === 'analyzed' ? (
                 <>
                   <Text style={styles.recommendation}>
@@ -400,12 +437,27 @@ export default function GameScreen() {
                 {' '}({item.submittedVoteCount} / {item.totalEligibleVoters})
               </Text>
               {item.finalDecision ? (
-                <>
-                  <Text style={styles.finalDecision}>
-                    {item.finalDecision === 'approved' ? 'Approved' : 'Rejected'}
+                <View style={[
+                  styles.finalDecisionCard,
+                  item.finalDecision === 'rejected'
+                    ? styles.finalDecisionRejectedCard
+                    : styles.finalDecisionApprovedCard,
+                ]}>
+                  <Text style={[
+                    styles.finalDecision,
+                    item.finalDecision === 'rejected'
+                      ? styles.finalDecisionRejected
+                      : styles.finalDecisionApproved,
+                  ]}>
+                    {item.finalDecision === 'approved' ? '✓ APPROVED' : '✕ REJECTED'}
                   </Text>
+                  {item.finalDecision === 'rejected' ? (
+                    <Text style={styles.finalDecisionRejectedMessage}>
+                      The evidence was rejected by the players.
+                    </Text>
+                  ) : null}
                   <Text>Points awarded: {item.pointsAwarded}</Text>
-                </>
+                </View>
               ) : item.playerId === playerId ? (
                 <Text style={styles.ownerNotice}>You cannot vote on your own evidence.</Text>
               ) : item.currentVoterDecision ? (
@@ -429,7 +481,7 @@ export default function GameScreen() {
           ))}
         </>
       ) : null}
-      <Text style={styles.sectionTitle}>Leaderboard</Text>
+      <Text style={styles.sectionTitle}>LEADERBOARD</Text>
       {leaderboard.map((entry, index) => (
         <View key={entry.playerId} style={styles.leaderboardRow}>
           <Text style={styles.rank}>{index + 1}.</Text>
@@ -454,6 +506,9 @@ export default function GameScreen() {
               <View style={styles.cameraActions}>
                 <Pressable style={styles.skipButton} onPress={retakePhoto}>
                   <Text style={styles.buttonText}>Retake</Text>
+                </Pressable>
+                <Pressable style={styles.saveButton} onPress={savePhoto}>
+                  <Text style={styles.buttonText}>Save Photo</Text>
                 </Pressable>
                 <Pressable style={styles.completeButton} onPress={usePhoto}>
                   <Text style={styles.buttonText}>{uploadingEvidence ? 'Submitting...' : 'Use Photo'}</Text>
@@ -486,34 +541,48 @@ export default function GameScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 56 },
+  container: { backgroundColor: '#10121B', padding: 20, paddingTop: 56 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 30, fontWeight: '800' },
-  timer: { color: '#6557E8', fontSize: 18, fontWeight: '800' },
+  title: { color: '#FFFFFF', fontSize: 30, fontWeight: '900' },
+  timer: { color: '#A89FFF', fontSize: 18, fontWeight: '900' },
+  liveScoreCard: { backgroundColor: '#1A1E2B', borderColor: '#3B3769', borderRadius: 18, borderWidth: 1, marginTop: 22, padding: 18 },
+  liveScoreLabel: { color: '#A89FFF', fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
+  liveScoreRow: { alignItems: 'baseline', flexDirection: 'row', marginTop: 5 },
+  liveScoreValue: { color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: -1 },
+  liveScoreTotal: { color: '#50D6A4', fontSize: 17, fontWeight: '900', marginLeft: 8 },
   finished: { color: '#B14B4B', fontWeight: '700', marginTop: 12 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', marginBottom: 10, marginTop: 24 },
-  card: { borderColor: '#E1E4EE', borderRadius: 14, borderWidth: 1, marginBottom: 10, padding: 16 },
-  selectedCard: { borderColor: '#6557E8' },
-  challengeText: { fontSize: 16, fontWeight: '700' },
-  meta: { color: '#666A7A', marginTop: 8 },
+  sectionTitle: { color: '#858BA2', fontSize: 12, fontWeight: '900', letterSpacing: 1.5, marginBottom: 10, marginTop: 24 },
+  card: { backgroundColor: '#1A1E2B', borderColor: '#30364B', borderRadius: 18, borderWidth: 1, marginBottom: 10, padding: 16 },
+  selectedCard: { borderColor: '#786BFF' },
+  challengeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', lineHeight: 25 },
+  meta: { color: '#A9ADBE', marginTop: 8 },
   actions: { borderTopColor: '#E1E4EE', borderTopWidth: 1, marginTop: 12, paddingTop: 12 },
   detailText: { marginBottom: 12 },
-  photoButton: { alignItems: 'center', backgroundColor: '#2E8B77', borderRadius: 10, marginBottom: 8, padding: 12 },
+  photoButton: { alignItems: 'center', backgroundColor: '#36B88D', borderRadius: 10, marginBottom: 8, padding: 14 },
   photoThumbnail: { borderRadius: 10, height: 120, marginBottom: 8, width: 160 },
-  evidenceBox: { backgroundColor: '#F3F1FF', borderRadius: 10, marginBottom: 8, padding: 12 },
-  evidenceTitle: { fontWeight: '800', marginBottom: 8 },
+  evidenceBox: { backgroundColor: '#1A1E2B', borderColor: '#30364B', borderRadius: 16, borderWidth: 1, marginBottom: 8, padding: 12 },
+  evidenceTitle: { color: '#FFFFFF', fontWeight: '800', marginBottom: 8 },
   evidenceImage: { borderRadius: 8, height: 160, marginBottom: 8, width: 220 },
-  recommendation: { fontWeight: '800', marginTop: 4 },
-  aiNotice: { color: '#6557E8', fontSize: 12, fontWeight: '700', marginTop: 8 },
+  recommendation: { color: '#50D6A4', fontWeight: '800', marginTop: 4 },
+  aiNotice: { color: '#A89FFF', fontSize: 12, fontWeight: '700', marginTop: 8 },
+  analysisState: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 8 },
+  analysisText: { color: '#D9DBE8', fontWeight: '700' },
   retryButton: { alignItems: 'center', backgroundColor: '#777B8B', borderRadius: 10, marginTop: 8, padding: 10 },
   voteProgress: { fontWeight: '700', marginTop: 8 },
-  finalDecision: { fontSize: 18, fontWeight: '800', marginTop: 8 },
+  finalDecisionCard: { borderRadius: 12, borderWidth: 1, marginTop: 8, padding: 12 },
+  finalDecisionApprovedCard: { backgroundColor: '#17372F', borderColor: '#36B88D' },
+  finalDecisionRejectedCard: { backgroundColor: '#3A1E27', borderColor: '#E45D6A' },
+  finalDecision: { fontSize: 18, fontWeight: '900' },
+  finalDecisionApproved: { color: '#50D6A4' },
+  finalDecisionRejected: { color: '#FF6B78' },
+  finalDecisionRejectedMessage: { color: '#FFB3B9', fontWeight: '700', marginTop: 5 },
   ownerNotice: { color: '#666A7A', fontWeight: '700', marginTop: 8 },
   voteActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  approveButton: { alignItems: 'center', backgroundColor: '#2E8B77', borderRadius: 10, flex: 1, padding: 10 },
-  rejectButton: { alignItems: 'center', backgroundColor: '#B14B4B', borderRadius: 10, flex: 1, padding: 10 },
-  completeButton: { alignItems: 'center', backgroundColor: '#6557E8', borderRadius: 10, padding: 12 },
-  skipButton: { alignItems: 'center', backgroundColor: '#777B8B', borderRadius: 10, marginTop: 8, padding: 12 },
+  approveButton: { alignItems: 'center', backgroundColor: '#36B88D', borderRadius: 10, flex: 1, padding: 10 },
+  rejectButton: { alignItems: 'center', backgroundColor: '#E45D6A', borderRadius: 10, flex: 1, padding: 10 },
+  completeButton: { alignItems: 'center', backgroundColor: '#786BFF', borderRadius: 10, padding: 12 },
+  saveButton: { alignItems: 'center', backgroundColor: '#36B88D', borderRadius: 10, padding: 12 },
+  skipButton: { alignItems: 'center', backgroundColor: '#555C73', borderRadius: 10, marginTop: 8, padding: 12 },
   buttonText: { color: '#FFFFFF', fontWeight: '700' },
   cameraContainer: { backgroundColor: '#111111', flex: 1, justifyContent: 'center' },
   camera: { flex: 1 },
@@ -522,10 +591,10 @@ const styles = StyleSheet.create({
   cameraActions: { gap: 8, padding: 16 },
   cancelButton: { alignItems: 'center', borderColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, padding: 12 },
   cancelButtonText: { color: '#FFFFFF', fontWeight: '700' },
-  leaderboardRow: { alignItems: 'center', borderBottomColor: '#E1E4EE', borderBottomWidth: 1, flexDirection: 'row', paddingVertical: 10 },
-  rank: { width: 28 },
-  name: { flex: 1, fontWeight: '700' },
-  score: { fontWeight: '800' },
-  counts: { color: '#666A7A', fontSize: 11, marginLeft: 8 },
-  homeButton: { alignItems: 'center', backgroundColor: '#2F3342', borderRadius: 10, marginTop: 24, padding: 14 },
+  leaderboardRow: { alignItems: 'center', backgroundColor: '#1A1E2B', borderColor: '#30364B', borderRadius: 12, borderWidth: 1, flexDirection: 'row', marginBottom: 8, padding: 12 },
+  rank: { color: '#A89FFF', fontWeight: '900', width: 28 },
+  name: { color: '#FFFFFF', flex: 1, fontWeight: '800' },
+  score: { color: '#50D6A4', fontWeight: '900' },
+  counts: { color: '#A9ADBE', fontSize: 11, marginLeft: 8 },
+  homeButton: { alignItems: 'center', backgroundColor: '#786BFF', borderRadius: 10, marginTop: 24, padding: 14 },
 });

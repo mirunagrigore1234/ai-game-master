@@ -98,25 +98,32 @@ export default function JoinGameScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Join Game</Text>
+      <Text style={styles.eyebrow}>READY PLAYER?</Text>
+      <Text style={styles.title}>Join a game</Text>
+      <Text style={styles.subtitle}>Enter the room code shared by your host.</Text>
+      <View style={styles.card}>
+      <Text style={styles.label}>GAME CODE</Text>
       <TextInput
         autoCapitalize="characters"
         maxLength={6}
         onChangeText={(value) => setCode(value.replace(/\s/g, '').toUpperCase())}
-        placeholder="Game Code"
-        style={styles.input}
+        placeholder="A7K29X"
+        placeholderTextColor="#6F7487"
+        style={[styles.input, styles.codeInput]}
         value={code}
       />
       <TextInput
         maxLength={20}
         onChangeText={setName}
-        placeholder="Your Name"
+        placeholder="Your name"
+        placeholderTextColor="#6F7487"
         style={styles.input}
         value={name}
       />
       <Pressable onPress={joinGame} style={styles.button}>
-        <Text style={styles.buttonText}>Join Game</Text>
+        <Text style={styles.buttonText}>JOIN GAME</Text>
       </Pressable>
+      </View>
     </View>
   );
 }
@@ -126,24 +133,33 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: '#10121B',
   },
+  eyebrow: { color: '#9D8CFF', fontSize: 11, fontWeight: '800', letterSpacing: 2, textAlign: 'center' },
   title: {
-    fontSize: 30,
+    color: '#FFFFFF',
+    fontSize: 34,
     fontWeight: '800',
-    marginBottom: 24,
+    marginTop: 8,
     textAlign: 'center',
   },
+  subtitle: { color: '#A9ADBE', fontSize: 15, marginBottom: 28, marginTop: 8, textAlign: 'center' },
+  card: { backgroundColor: '#1A1E2B', borderColor: '#2D3347', borderRadius: 22, borderWidth: 1, padding: 20 },
+  label: { color: '#858BA2', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
   input: {
-    borderColor: '#E1E4EE',
+    backgroundColor: '#11141E',
+    borderColor: '#363C53',
     borderRadius: 12,
     borderWidth: 1,
+    color: '#FFFFFF',
     fontSize: 16,
     marginBottom: 12,
     padding: 16,
   },
+  codeInput: { fontSize: 22, fontWeight: '800', letterSpacing: 4 },
   button: {
     alignItems: 'center',
-    backgroundColor: '#6557E8',
+    backgroundColor: '#786BFF',
     borderRadius: 12,
     marginTop: 8,
     padding: 16,

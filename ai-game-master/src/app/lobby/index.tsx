@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { API_BASE_URL } from '@/config/api';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, StyleSheet, Pressable } from 'react-native';
+import { Alert, View, Text, StyleSheet, Pressable, Animated, SafeAreaView, ScrollView } from 'react-native';
 
 type Player = {
   id: string;
@@ -12,6 +12,7 @@ type Player = {
 type GameStatus = 'lobby' | 'playing' | 'finished';
 
 export default function LobbyScreen() {
+  const entrance = useRef(new Animated.Value(0)).current;
 const params = useLocalSearchParams<{
     code?: string | string[];
     playerId?: string | string[];
@@ -145,6 +146,10 @@ const params = useLocalSearchParams<{
   const isHost = playerId === hostPlayerId;
   const challengesGenerated = generatedChallenges.length > 0;
 
+  useEffect(() => {
+    Animated.timing(entrance, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+  }, [entrance]);
+
   const exitGame = async () => {
     if (!code || !playerId) {
       return;
@@ -257,11 +262,24 @@ const params = useLocalSearchParams<{
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        if (errorText.includes('At least 2 players are required to start the game')) {
-          Alert.alert('Need more players', 'At least 2 players are required to start the game.');
+        const responseBody = await response.text();
+        let backendMessage = '';
+        try {
+          const parsedBody: { message?: unknown } = JSON.parse(responseBody);
+          if (typeof parsedBody.message === 'string') {
+            backendMessage = parsedBody.message.trim();
+          }
+        } catch {
+          backendMessage = responseBody.trim();
+        }
+
+        if (backendMessage === 'At least 2 players are required to start the game.') {
+          Alert.alert('Need more players', backendMessage);
         } else {
-          Alert.alert('Could not start game', 'Only the host can start this game.');
+          Alert.alert(
+            'Could not start game',
+            backendMessage || 'Please try again.'
+          );
         }
       }
     } catch {
@@ -318,7 +336,9 @@ const params = useLocalSearchParams<{
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+    <Animated.View style={[styles.container, { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Game Lobby</Text>
       <Text style={styles.codeLabel}>GAME CODE</Text>
       {code ? (
@@ -340,9 +360,11 @@ const params = useLocalSearchParams<{
       {playerName ? <Text style={styles.joinedAs}>You joined as: {playerName}</Text> : null}
       <Text style={styles.playersTitle}>Players</Text>
       {players.map((player) => (
-        <Text key={player.id} style={styles.player}>
-          {player.name}
-        </Text>
+        <View key={player.id} style={styles.playerRow}>
+          <View style={styles.playerDot} />
+          <Text style={styles.player}>{player.name}</Text>
+          {player.id === hostPlayerId ? <Text style={styles.hostBadge}>HOST</Text> : null}
+        </View>
       ))}
       {status !== 'finished' && playerId && hostPlayerId ? (
         <Pressable style={styles.actionButton} onPress={isHost ? confirmEnd : confirmExit}>
@@ -356,15 +378,25 @@ const params = useLocalSearchParams<{
           ))}
         </>
       ) : null}
+      {status === 'playing' ? (
+        <Text style={styles.startedText}>Game started.</Text>
+      ) : challengesGenerated ? (
+        <Text style={styles.startedText}>Challenges ready.</Text>
+      ) : (
+        <Text style={styles.waitingText}>Waiting for players...</Text>
+      )}
+      </ScrollView>
       {isHost && status === 'lobby' ? (
-        <>
+        <View style={styles.bottomAction}>
           {!challengesGenerated ? (
             <Pressable
               style={styles.startButton}
               onPress={prepareChallenges}
               disabled={preparingChallenges}
             >
-              <Text style={styles.startButtonText}>Prepare Challenges</Text>
+              <Text style={styles.startButtonText}>
+                {preparingChallenges ? 'Generating Challenges...' : 'Prepare Challenges'}
+              </Text>
             </Pressable>
           ) : (
             <>
@@ -382,14 +414,21 @@ const params = useLocalSearchParams<{
                     <Text style={styles.startButtonText}>Start Game</Text>
                   </Pressable>
                 </>
-              ) : duration === 'ai' && recommendedDuration ? (
+              ) : recommendedDuration !== null ? (
                 <>
-                  <Text style={styles.previewText}>AI recommends {recommendedDuration} minutes</Text>
+                  <Text style={styles.durationLabel}>DURATION</Text>
+                  <View style={styles.recommendationCard}>
+                    <Text style={styles.recommendationEyebrow}>AI RECOMMENDS</Text>
+                    <Text style={styles.recommendationValue}>{recommendedDuration} minutes</Text>
+                    <Text style={styles.recommendationCopy}>
+                      Based on the number and difficulty of the challenges.
+                    </Text>
+                  </View>
                   <Pressable style={styles.startButton} onPress={() => confirmStart(String(recommendedDuration))}>
                     <Text style={styles.startButtonText}>Accept {recommendedDuration} min</Text>
                   </Pressable>
                   <Pressable style={styles.startButton} onPress={chooseDuration}>
-                    <Text style={styles.startButtonText}>Choose another duration</Text>
+                    <Text style={styles.startButtonText}>Choose another</Text>
                   </Pressable>
                 </>
               ) : (
@@ -399,37 +438,42 @@ const params = useLocalSearchParams<{
               )}
             </>
           )}
-        </>
+        </View>
       ) : null}
-      {status === 'playing' ? (
-        <Text style={styles.startedText}>Game started.</Text>
-      ) : challengesGenerated ? (
-        <Text style={styles.startedText}>Challenges ready.</Text>
-      ) : (
-        <Text>Waiting for players...</Text>
-      )}
-    </View>
+    </Animated.View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#10121B',
+  },
+  safeArea: {
+    backgroundColor: '#10121B',
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 140,
+    paddingTop: 40,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '900',
+    marginBottom: 20,
   },
   codeLabel: {
+    color: '#858BA2',
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 1,
     marginTop: 20,
   },
   code: {
+    color: '#FFFFFF',
     fontSize: 36,
     fontWeight: '800',
     letterSpacing: 5,
@@ -439,7 +483,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#222',
+    backgroundColor: '#1A1E2B',
+    borderColor: '#363C53',
+    borderWidth: 1,
     marginBottom: 12,
   },
   copyButtonText: {
@@ -458,7 +504,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
-    backgroundColor: '#333',
+    backgroundColor: '#272B3A',
   },
   actionButtonText: {
     color: '#fff',
@@ -467,10 +513,10 @@ const styles = StyleSheet.create({
   },
   startButton: {
     alignItems: 'center',
-    backgroundColor: '#6557E8',
+    backgroundColor: '#786BFF',
     borderRadius: 12,
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 8,
     minHeight: 52,
     paddingHorizontal: 24,
   },
@@ -480,29 +526,89 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   startedText: {
+    color: '#50D6A4',
     fontSize: 16,
     fontWeight: '700',
     marginTop: 16,
   },
   previewText: {
+    backgroundColor: '#1A1E2B',
+    borderColor: '#2D3347',
+    borderRadius: 12,
+    borderWidth: 1,
+    color: '#D9DBE8',
     marginTop: 8,
-    textAlign: 'center',
+    padding: 12,
+  },
+  durationLabel: {
+    color: '#858BA2',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginTop: 12,
+  },
+  recommendationCard: {
+    backgroundColor: '#242044',
+    borderColor: '#786BFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+    padding: 14,
+  },
+  recommendationEyebrow: {
+    color: '#A89FFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  recommendationValue: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  recommendationCopy: {
+    color: '#C1C3D2',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 5,
   },
   subtitle: {
+    color: '#A9ADBE',
     fontSize: 16,
     marginBottom: 20,
   },
+  bottomAction: {
+    backgroundColor: '#10121B',
+    borderTopColor: '#2D3347',
+    borderTopWidth: 1,
+    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+  },
+  waitingText: {
+    color: '#A9ADBE',
+    fontSize: 15,
+    marginTop: 18,
+  },
   joinedAs: {
+    color: '#A9ADBE',
     fontSize: 16,
     marginBottom: 20,
   },
   playersTitle: {
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
   },
   player: {
+    color: '#F3F4FA',
+    flex: 1,
     fontSize: 16,
-    marginBottom: 4,
+    fontWeight: '700',
   },
+  playerRow: { alignItems: 'center', backgroundColor: '#1A1E2B', borderColor: '#2D3347', borderRadius: 13, borderWidth: 1, flexDirection: 'row', marginBottom: 8, padding: 14 },
+  playerDot: { backgroundColor: '#50D6A4', borderRadius: 5, height: 10, marginRight: 12, width: 10 },
+  hostBadge: { color: '#A89FFF', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
 });

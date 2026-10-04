@@ -246,17 +246,17 @@ public class GameService {
             );
         }
 
-        if (!"lobby".equals(game.getStatus())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Game has already started"
-            );
-        }
-
         if (game.getPlayers().size() < 2) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "At least 2 players are required to start the game."
+            );
+        }
+
+        if (!"lobby".equals(game.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Game has already started"
             );
         }
 

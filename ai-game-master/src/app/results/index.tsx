@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { API_BASE_URL } from '@/config/api';
 
 type LeaderboardEntry = {
@@ -13,6 +13,7 @@ type LeaderboardEntry = {
 };
 
 export default function ResultsScreen() {
+  const entrance = useRef(new Animated.Value(0)).current;
   const params = useLocalSearchParams<{
     code?: string | string[];
   }>();
@@ -21,6 +22,7 @@ export default function ResultsScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    Animated.timing(entrance, { toValue: 1, duration: 550, useNativeDriver: true }).start();
     if (!code) {
       setIsLoading(false);
       return;
@@ -52,10 +54,10 @@ export default function ResultsScreen() {
     return () => {
       mounted = false;
     };
-  }, [code]);
+  }, [code, entrance]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <Animated.ScrollView contentContainerStyle={styles.container} style={{ opacity: entrance }}>
       <Text style={styles.eyebrow}>FINAL RESULTS</Text>
       <Text style={styles.title}>Game complete</Text>
       <Text style={styles.subtitle}>All challenge decisions have been resolved.</Text>
@@ -64,7 +66,7 @@ export default function ResultsScreen() {
         <Text style={styles.subtitle}>Final scores are unavailable.</Text>
       ) : null}
       {leaderboard.map((entry, index) => (
-        <View key={entry.playerId} style={styles.card}>
+        <Animated.View key={entry.playerId} style={[styles.card, { opacity: entrance }]}>
           <View style={styles.topRow}>
             <Text style={styles.rank}>#{index + 1}</Text>
             <Text style={styles.name}>{entry.name}</Text>
@@ -74,43 +76,43 @@ export default function ResultsScreen() {
             {entry.completedChallengeCount} completed · {entry.skippedChallengeCount} skipped ·{' '}
             {entry.totalChallenges} total
           </Text>
-        </View>
+        </Animated.View>
       ))}
       <Pressable style={styles.homeButton} onPress={() => router.replace('/')}>
         <Text style={styles.homeButtonText}>Home</Text>
       </Pressable>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F7F4EE',
+    backgroundColor: '#10121B',
     padding: 24,
     paddingTop: 72,
   },
   eyebrow: {
-    color: '#B14B4B',
+    color: '#A89FFF',
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 2,
   },
   title: {
-    color: '#20212A',
+    color: '#FFFFFF',
     fontSize: 34,
     fontWeight: '800',
     marginTop: 8,
   },
   subtitle: {
-    color: '#666875',
+    color: '#A9ADBE',
     fontSize: 16,
     lineHeight: 23,
     marginTop: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E1E4EE',
+    backgroundColor: '#1A1E2B',
+    borderColor: '#30364B',
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 16,
@@ -121,30 +123,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   rank: {
-    color: '#B14B4B',
+    color: '#A89FFF',
     fontSize: 20,
     fontWeight: '800',
     width: 52,
   },
   name: {
-    color: '#20212A',
+    color: '#FFFFFF',
     flex: 1,
     fontSize: 18,
     fontWeight: '700',
   },
   score: {
-    color: '#20212A',
+    color: '#50D6A4',
     fontSize: 18,
     fontWeight: '800',
   },
   counts: {
-    color: '#666875',
+    color: '#A9ADBE',
     fontSize: 14,
     marginTop: 10,
   },
   homeButton: {
     alignItems: 'center',
-    backgroundColor: '#20212A',
+    backgroundColor: '#786BFF',
     borderRadius: 12,
     marginTop: 28,
     padding: 15,

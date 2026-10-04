@@ -337,13 +337,13 @@ function OptionButton({
 }
 
 const colors = {
-  background: '#F6F7FB',
-  card: '#FFFFFF',
-  ink: '#171A2B',
-  muted: '#6F7487',
-  border: '#E1E4EE',
-  accent: '#6557E8',
-  accentLight: '#ECEAFF',
+  background: '#10121B',
+  card: '#1A1E2B',
+  ink: '#FFFFFF',
+  muted: '#A9ADBE',
+  border: '#30364B',
+  accent: '#786BFF',
+  accentLight: '#2A2750',
 };
 
 const styles = StyleSheet.create({
@@ -354,11 +354,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   title: {
     color: colors.ink,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   nameInput: {
-    backgroundColor: colors.card,
+    backgroundColor: '#151823',
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
@@ -379,7 +379,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   section: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
     marginBottom: 24,
+    padding: 16,
   },
   sectionTitle: {
     color: colors.ink,
@@ -399,7 +404,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 46,
     paddingHorizontal: 16,
   },
   optionButtonSelected: {
@@ -459,6 +464,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
     minHeight: 56,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
   },
   createButtonPressed: {
     opacity: 0.85,
