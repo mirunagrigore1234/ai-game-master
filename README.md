@@ -32,17 +32,34 @@ It can:
 - avoid repeating challenges already used
 - operate within hard safety and feasibility constraints
 
-## Why it is hackathon-ready
+## 🎮 See It In Action
 
-- Real-world multiplayer gameplay using a short join code
-- Three game modes with different challenge assignment strategies
-- Safe, social, game-show-style challenges
-- Camera-first evidence capture
-- AI-assisted evidence review with human final authority
-- Live polling keeps lobby, challenge, evidence, and leaderboard state synchronized
-- Local challenge fallback keeps the game playable when Gemini is unavailable
-- - Live score feedback keeps players aware of their progress throughout the game
-- Players can preserve memorable moments by saving photos directly from the in-game camera
+### Create the game
+
+![AI Game Master Home](docs/screenshots/home.jpeg)
+
+![Create Game](docs/screenshots/create-game1.jpeg)
+![Create Game](docs/screenshots/create-game2.jpeg)
+
+### Build the multiplayer lobby
+
+![Game Lobby](docs/screenshots/lobby.jpeg)
+
+### Play AI-generated challenges
+
+![Live Game](docs/screenshots/game.jpeg)
+
+### AI-assisted evidence review
+
+![Evidence Review](docs/screenshots/evidence.jpeg)
+
+### Humans make the final decision
+
+![Human Voting](docs/screenshots/voting.jpeg)
+
+### Finish with the final leaderboard
+
+![Final Results](docs/screenshots/results.jpeg)
 
 ## Architecture
 
